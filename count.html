@@ -1,0 +1,132 @@
+<!-- trial.html -->
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Employ Me</title>
+    <!-- Bootstrap (optional, for styling) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+</head>
+<body class="p-4">
+
+    <div class="text-center" data-aos="fade-up">
+        <!-- keep the download href; the click will open the email modal first -->
+        <a id="employBtn" href="assets/files/John Ongoma CV.pdf"
+             class="btn btn-primary" download="John Otieno CV.pdf" target="_blank">
+            <i class="bi bi-download"></i> Employ Me
+        </a>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="emailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form id="emailForm" class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Send your email</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Please enter your email so I can reach out to you.</p>
+                    <div class="mb-3">
+                        <label for="visitorEmail" class="form-label">Your email</label>
+                        <input id="visitorEmail" name="email" type="email" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="visitorMessage" class="form-label">Message (optional)</label>
+                        <textarea id="visitorMessage" name="message" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div id="status" class="small text-muted"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Send & Download CV</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS (for modal) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // CONFIG: replace these with your actual endpoints/IDs
+        const FORMSPREE_ENDPOINT = "https://formspree.io/f/xdkelavq"; 
+        const COUNTAPI_NAMESPACE = "your-namespace"; 
+        const COUNTAPI_KEY = "employ-clicks"; 
+
+        const employBtn = document.getElementById("employBtn");
+        const emailModal = new bootstrap.Modal(document.getElementById("emailModal"));
+        const emailForm = document.getElementById("emailForm");
+        const statusEl = document.getElementById("status");
+
+        // When user clicks "Employ Me", show modal instead of immediate download
+        employBtn.addEventListener("click", function (e) {
+            // prevent immediate navigation/download
+            e.preventDefault();
+            emailModal.show();
+        });
+
+        // Submit the form: send visitor email to your email via Formspree and increment counter via CountAPI
+        emailForm.addEventListener("submit", async function (e) {
+            e.preventDefault();
+            statusEl.textContent = "Sending...";
+            const email = document.getElementById("visitorEmail").value.trim();
+            const message = document.getElementById("visitorMessage").value.trim();
+
+            if (!email) {
+                statusEl.textContent = "Please enter a valid email.";
+                return;
+            }
+
+            try {
+                // 1) Send email to your inbox via Formspree (or another email endpoint)
+                // Formspree expects a POST with form fields; update FORMSPREE_ENDPOINT in config
+                const formData = new FormData();
+                formData.append("email", email);
+                formData.append("message", message || "No message");
+
+                const resp = await fetch(FORMSPREE_ENDPOINT, {
+                    method: "POST",
+                    body: formData,
+                    headers: { "Accept": "application/json" }
+                });
+
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => null);
+                    throw new Error(err && err.error ? err.error : "Failed to send email");
+                }
+
+                // Count API
+                const countResp = await fetch(`https://api.countapi.xyz/hit/${encodeURIComponent(COUNTAPI_NAMESPACE)}/${encodeURIComponent(COUNTAPI_KEY)}`);
+                const countJson = await countResp.json().catch(() => ({ value: null }));
+
+                statusEl.textContent = "Sent! Starting download...";
+                // close modal after a short delay
+                setTimeout(() => {
+                    emailModal.hide();
+                    // Trigger download by navigating to the href with target blank (keeps original behavior)
+                    // Create a temporary anchor to ensure download works
+                    const url = employBtn.getAttribute("href");
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = employBtn.getAttribute("download") || "";
+                    a.target = "_blank";
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+
+                    // Optionally inform in console about new count
+                    if (countJson && typeof countJson.value !== "undefined") {
+                        console.log("Employ button clicked total count:", countJson.value);
+                    }
+                }, 700);
+
+            } catch (err) {
+                console.error(err);
+                statusEl.textContent = "Error sending. Please try again later.";
+            }
+        });
+    </script>
+</body>
+</html></div>

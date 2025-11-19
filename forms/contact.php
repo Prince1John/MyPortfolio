@@ -1,0 +1,1 @@
+<?php>//sii itajiki mzee ....amening'oa manzeh</php>
